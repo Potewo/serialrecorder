@@ -17,23 +17,44 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"github.com/Potewo/serialrecorder/serial"
 	"github.com/spf13/cobra"
-
 	"github.com/spf13/viper"
+	"os"
 )
 
+type Config struct {
+	Baudrate   int
+	DeviceName string
+}
+
 var cfgFile string
+var config Config
+var baudRate int
+var deviceName string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "serialrecorder",
 	Short: "Show and record bytes through serial port.",
-	Long: ``,
+	Long:  ``,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Printf("Hello world")
+		fmt.Printf("config: %#v\n", config)
+		fmt.Printf("baudRate: %#v\n", baudRate)
+		fmt.Printf("deviceName: %#v\n", deviceName)
+		if config.DeviceName == "" {
+			fmt.Fprintln(os.Stderr, "Device name is required")
+			os.Exit(1)
+		}
+		if err := serial.Init(config.DeviceName, config.Baudrate); err != nil {
+			fmt.Fprintln(os.Stderr, "Failed to initialize serial port.\n", err)
+			os.Exit(1)
+		}
+		if err := serial.Read(); err != nil {
+			fmt.Fprintln(os.Stderr, "Failed to read serial data:", err)
+		}
 	},
 }
 
@@ -50,11 +71,14 @@ func init() {
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.serialrecorder.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "$HOME/.serialrecorder.yml", "config file (default is $HOME/.serialrecorder.yaml)")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().IntVarP(&baudRate, "baudrate", "b", 9600, "set serial baudrate (required)")
+	rootCmd.Flags().StringVarP(&deviceName, "devicename", "d", "", "set device name (required)")
+	viper.BindPFlag("Baudrate", rootCmd.Flags().Lookup("baudrate"))
+	viper.BindPFlag("DeviceName", rootCmd.Flags().Lookup("devicename"))
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -78,5 +102,8 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	}
+	if err := viper.Unmarshal(&config); err != nil {
+		fmt.Fprintln(os.Stderr, "Using config file:", err)
 	}
 }
