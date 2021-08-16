@@ -32,7 +32,7 @@ type Config struct {
 
 var cfgFile string
 var config Config
-var baudRate int
+var baudrate int
 var deviceName string
 var fileName string
 
@@ -44,10 +44,9 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("config: %#v\n", config)
-		fmt.Printf("baudRate: %#v\n", baudRate)
-		fmt.Printf("deviceName: %#v\n", deviceName)
-		fmt.Printf("fileName %#v\n", fileName)
+		fmt.Printf("BaudRate: %#v\n", config.Baudrate)
+		fmt.Printf("DeviceName: %#v\n", config.DeviceName)
+		fmt.Printf("FileName %#v\n", config.Output)
 		if config.DeviceName == "" {
 			fmt.Fprintln(os.Stderr, "Device name is required")
 			os.Exit(1)
@@ -105,7 +104,7 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().IntVarP(&baudRate, "baudrate", "b", 9600, "set serial baudrate (required)")
+	rootCmd.Flags().IntVarP(&baudrate, "baudrate", "b", 9600, "set serial baudrate (required)")
 	rootCmd.Flags().StringVarP(&deviceName, "devicename", "d", "", "set device name (required)")
 	rootCmd.Flags().StringVarP(&fileName, "output", "o", "", "set filepath to save string")
 	viper.BindPFlag("Baudrate", rootCmd.Flags().Lookup("baudrate"))
