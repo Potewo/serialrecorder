@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/Potewo/serialrecorder/file"
 	"github.com/Potewo/serialrecorder/serial"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -26,12 +27,14 @@ import (
 type Config struct {
 	Baudrate   int
 	DeviceName string
+	Output   string
 }
 
 var cfgFile string
 var config Config
 var baudRate int
 var deviceName string
+var fileName string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -44,16 +47,43 @@ var rootCmd = &cobra.Command{
 		fmt.Printf("config: %#v\n", config)
 		fmt.Printf("baudRate: %#v\n", baudRate)
 		fmt.Printf("deviceName: %#v\n", deviceName)
+		fmt.Printf("fileName %#v\n", fileName)
 		if config.DeviceName == "" {
 			fmt.Fprintln(os.Stderr, "Device name is required")
 			os.Exit(1)
 		}
-		if err := serial.Init(config.DeviceName, config.Baudrate); err != nil {
+		if config.Output != "" {
+			if err := file.Open(config.Output); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+		}
+		if err := serial.Init(config.DeviceName, config.Baudrate, config.Output); err != nil {
 			fmt.Fprintln(os.Stderr, "Failed to initialize serial port.\n", err)
 			os.Exit(1)
 		}
-		if err := serial.Read(); err != nil {
-			fmt.Fprintln(os.Stderr, "Failed to read serial data:", err)
+		if config.Output != "" {
+			for {
+				s, err := serial.Read()
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Failed to read serial data:", err)
+					os.Exit(1)
+				}
+				fmt.Printf("%s", s)
+				if err := file.Append(string(s)); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					os.Exit(1)
+				}
+			}
+		} else {
+			for {
+				s, err := serial.Read()
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Failed to read serial data:", err)
+					os.Exit(1)
+				}
+				fmt.Printf("%s", s)
+			}
 		}
 	},
 }
@@ -77,8 +107,10 @@ func init() {
 	// when this action is called directly.
 	rootCmd.Flags().IntVarP(&baudRate, "baudrate", "b", 9600, "set serial baudrate (required)")
 	rootCmd.Flags().StringVarP(&deviceName, "devicename", "d", "", "set device name (required)")
+	rootCmd.Flags().StringVarP(&fileName, "output", "o", "", "set filepath to save string")
 	viper.BindPFlag("Baudrate", rootCmd.Flags().Lookup("baudrate"))
 	viper.BindPFlag("DeviceName", rootCmd.Flags().Lookup("devicename"))
+	viper.BindPFlag("Output", rootCmd.Flags().Lookup("output"))
 }
 
 // initConfig reads in config file and ENV variables if set.
